@@ -101,3 +101,9 @@ logger:
 Authentication failures start Home Assistant's reauthentication flow. Endpoint,
 timeout, rate-limit, deployment, invalid-response, and tool-iteration errors are
 reported separately in the UI and logs.
+
+## Versioning
+
+Published versions use semantic `vX.Y.Z` GitHub releases. HACS installs the
+latest release and displays its tag instead of a commit hash. The release tag
+must match the `version` value in the integration manifest.
