@@ -27,6 +27,17 @@ URLs ending in `/responses` are accepted and normalized automatically.
 
 ## Installation
 
+### HACS
+
+1. In HACS, open **Custom repositories**.
+2. Add `https://github.com/KAkos06/ha-foundry-integration` with the
+   **Integration** category.
+3. Open **Microsoft Foundry**, select **Download**, then restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration** and select
+   **Microsoft Foundry**.
+
+### Manual installation
+
 1. Copy `custom_components/foundry_conversation/` into:
 
    ```text

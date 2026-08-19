@@ -2,11 +2,13 @@
   "domain": "foundry_conversation",
   "name": "Microsoft Foundry",
   "after_dependencies": ["assist_pipeline", "intent"],
-  "codeowners": [],
+  "codeowners": ["@KAkos06"],
   "config_flow": true,
   "dependencies": ["conversation", "llm"],
+  "documentation": "https://github.com/KAkos06/ha-foundry-integration#readme",
   "integration_type": "service",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/KAkos06/ha-foundry-integration/issues",
   "requirements": ["openai==2.45.0"],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
