@@ -1,5 +1,9 @@
 # Microsoft Foundry Conversation for Home Assistant
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/KAkos06/ha-foundry-integration/main/custom_components/foundry_conversation/brand/icon@2x.png" width="160" alt="Microsoft Foundry integration logo">
+</p>
+
 This custom integration registers a Microsoft Foundry / Azure OpenAI Responses
 API deployment as a native Home Assistant conversation agent. Home Assistant
 communicates directly with Foundry; no proxy, Node-RED flow, MCP server, or
