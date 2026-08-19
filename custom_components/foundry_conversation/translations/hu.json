@@ -1,0 +1,94 @@
+{
+  "title": "Microsoft Foundry",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kapcsolódás a Microsoft Foundryhoz",
+        "description": "Add meg az Azure OpenAI v1 alap URL-t, az API-kulcsot és a deployment nevét. Mentéskor egy kis Responses API kérés ellenőrzi a beállításokat.",
+        "data": {
+          "endpoint": "Endpoint",
+          "api_key": "API-kulcs",
+          "model": "Modell / deployment"
+        },
+        "data_description": {
+          "endpoint": "Például https://<resource>.services.ai.azure.com/openai/v1/. A /responses végződésű teljes URL is elfogadott."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Microsoft Foundry hitelesítés frissítése",
+        "description": "Az API-kulcsot a szolgáltatás elutasította. Adj meg egy érvényes kulcsot.",
+        "data": {
+          "api_key": "API-kulcs"
+        }
+      },
+      "reconfigure": {
+        "title": "Microsoft Foundry újrakonfigurálása",
+        "description": "Frissítsd az endpointot és az API-kulcsot. Mentéskor a jelenlegi deployment ellenőrzésre kerül.",
+        "data": {
+          "endpoint": "Endpoint",
+          "api_key": "API-kulcs"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nem lehet kapcsolódni a Microsoft Foundry endpointhoz",
+      "invalid_auth": "Érvénytelen API-kulcs",
+      "invalid_deployment": "A modell / deployment nem érhető el",
+      "invalid_endpoint": "HTTPS endpoint szükséges /openai/v1 vagy /openai/v1/responses végződéssel",
+      "invalid_response": "A Microsoft Foundry érvénytelen választ adott",
+      "rate_limit": "A Microsoft Foundry korlátozza a kéréseket",
+      "timeout": "A Microsoft Foundry nem válaszolt időben",
+      "tool_limit": "Az eszközhívási korlátot elértük",
+      "unknown": "Váratlan hiba"
+    },
+    "abort": {
+      "reauth_successful": "A hitelesítés sikeresen frissült",
+      "reconfigure_successful": "A konfiguráció sikeresen frissült"
+    }
+  },
+  "selector": {
+    "reasoning_effort": {
+      "options": {
+        "disabled": "Kikapcsolva",
+        "none": "Nincs",
+        "minimal": "Minimális",
+        "low": "Alacsony",
+        "medium": "Közepes",
+        "high": "Magas",
+        "xhigh": "Extra magas"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Microsoft Foundry beszélgetési beállítások",
+        "description": "A modellfüggő paramétereket csak akkor küldjük el, ha be vannak állítva. A Home Assistant vezérlés a beépített Assist LLM API-t és csak az expose-olt entitásokat használja.",
+        "data": {
+          "model": "Modell / deployment",
+          "prompt": "System prompt",
+          "max_output_tokens": "Maximális kimeneti tokenszám",
+          "max_tool_iterations": "Maximális eszközhívási körök",
+          "timeout": "Időtúllépés",
+          "allow_home_assistant_control": "Home Assistant vezérlés engedélyezése",
+          "temperature": "Temperature (opcionális)",
+          "reasoning_effort": "Reasoning erőssége"
+        },
+        "data_description": {
+          "prompt": "Lecseréli az alap Home Assistant asszisztens promptot. Az Assist API eszközutasításai továbbra is hozzáadódnak.",
+          "temperature": "A mező törlésével a temperature paraméter kimarad. Aktív reasoning mellett szintén nem kerül elküldésre.",
+          "reasoning_effort": "A Kikapcsolva érték teljesen kihagyja a reasoning paramétert."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nem lehet kapcsolódni a Microsoft Foundry endpointhoz",
+      "invalid_auth": "Érvénytelen API-kulcs",
+      "invalid_deployment": "A modell / deployment nem érhető el",
+      "invalid_response": "A Microsoft Foundry érvénytelen választ adott",
+      "rate_limit": "A Microsoft Foundry korlátozza a kéréseket",
+      "timeout": "A Microsoft Foundry nem válaszolt időben",
+      "unknown": "Váratlan hiba"
+    }
+  }
+}

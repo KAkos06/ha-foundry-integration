@@ -1,0 +1,94 @@
+{
+  "title": "Microsoft Foundry",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Microsoft Foundry",
+        "description": "Enter an Azure OpenAI v1 base URL, API key, and deployment name. Saving performs one small Responses API request to validate the settings.",
+        "data": {
+          "endpoint": "Endpoint",
+          "api_key": "API key",
+          "model": "Model / deployment"
+        },
+        "data_description": {
+          "endpoint": "For example https://<resource>.services.ai.azure.com/openai/v1/. A full URL ending in /responses is also accepted."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update Microsoft Foundry credentials",
+        "description": "The API key was rejected. Enter a valid key.",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Microsoft Foundry",
+        "description": "Update the endpoint and API key. Saving validates the current deployment.",
+        "data": {
+          "endpoint": "Endpoint",
+          "api_key": "API key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the Microsoft Foundry endpoint",
+      "invalid_auth": "Invalid API key",
+      "invalid_deployment": "The model / deployment is not available",
+      "invalid_endpoint": "Enter an HTTPS endpoint ending in /openai/v1 or /openai/v1/responses",
+      "invalid_response": "Microsoft Foundry returned an invalid response",
+      "rate_limit": "Microsoft Foundry is rate limiting requests",
+      "timeout": "Microsoft Foundry did not respond in time",
+      "tool_limit": "The tool-call limit was reached",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "reauth_successful": "Authentication updated successfully",
+      "reconfigure_successful": "Configuration updated successfully"
+    }
+  },
+  "selector": {
+    "reasoning_effort": {
+      "options": {
+        "disabled": "Disabled",
+        "none": "None",
+        "minimal": "Minimal",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "xhigh": "Extra high"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Microsoft Foundry conversation options",
+        "description": "Model-specific parameters are only sent when configured. Home Assistant control uses the built-in Assist LLM API and only exposed entities.",
+        "data": {
+          "model": "Model / deployment",
+          "prompt": "System prompt",
+          "max_output_tokens": "Maximum output tokens",
+          "max_tool_iterations": "Maximum tool iterations",
+          "timeout": "Timeout",
+          "allow_home_assistant_control": "Allow Home Assistant control",
+          "temperature": "Temperature (optional)",
+          "reasoning_effort": "Reasoning effort"
+        },
+        "data_description": {
+          "prompt": "Replaces the default Home Assistant assistant prompt. Assist API tool instructions are still appended.",
+          "temperature": "Clear this field to omit temperature. It is also omitted when reasoning is active.",
+          "reasoning_effort": "Disabled omits the reasoning parameter entirely."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the Microsoft Foundry endpoint",
+      "invalid_auth": "Invalid API key",
+      "invalid_deployment": "The model / deployment is not available",
+      "invalid_response": "Microsoft Foundry returned an invalid response",
+      "rate_limit": "Microsoft Foundry is rate limiting requests",
+      "timeout": "Microsoft Foundry did not respond in time",
+      "unknown": "Unexpected error"
+    }
+  }
+}

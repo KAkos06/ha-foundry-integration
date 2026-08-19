@@ -1,0 +1,12 @@
+{
+  "domain": "foundry_conversation",
+  "name": "Microsoft Foundry",
+  "after_dependencies": ["assist_pipeline", "intent"],
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["conversation", "llm"],
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "requirements": ["openai==2.45.0"],
+  "version": "0.1.0"
+}
