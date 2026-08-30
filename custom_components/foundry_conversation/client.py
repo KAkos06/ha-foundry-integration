@@ -200,6 +200,10 @@ EXCLUDED_MODEL_PREFIXES = (
     "text-embedding",
     "text-search",
     "text-similarity",
+    "text-davinci",
+    "text-curie",
+    "text-babbage",
+    "text-ada",
     "dall-e",
     "tts",
     "whisper",
@@ -209,8 +213,11 @@ EXCLUDED_MODEL_PREFIXES = (
     "moderation",
     "omni-moderation",
     "realtime",
+    "audio",
 )
-DATE_SNAPSHOT_PATTERN = re.compile(r"(-\d{4}-\d{2}-\d{2}$|-\d{8}$|-\d{4}$)")
+DATE_SNAPSHOT_PATTERN = re.compile(
+    r"(-\d{4}-\d{2}-\d{2}$|-\d{8}$|-\d{4}$|-preview-\d{4}-\d{2}-\d{2}$)"
+)
 
 
 async def async_list_targets(
@@ -237,45 +244,51 @@ async def async_list_targets(
     agents: list[str] = []
 
     if project_endpoint and headers:
-        try:
-            dep_resp = await http_client.get(
-                f"{project_endpoint}/deployments",
-                params={"api-version": "v1", "limit": 100},
-                headers=headers,
-                timeout=5.0,
-            )
-            if dep_resp.status_code == 200:
-                dep_payload = dep_resp.json()
-                dep_items = dep_payload.get("data", dep_payload.get("value", []))
-                deployments = sorted(
-                    {
-                        item["name"]
-                        for item in dep_items
-                        if isinstance(item, dict) and isinstance(item.get("name"), str)
-                    }
+        for api_version in ("2024-05-01-preview", "2024-10-01-preview", "v1", "2025-05-15-preview"):
+            try:
+                dep_resp = await http_client.get(
+                    f"{project_endpoint}/deployments",
+                    params={"api-version": api_version, "limit": 100},
+                    headers=headers,
+                    timeout=5.0,
                 )
-        except Exception:
-            pass
+                if dep_resp.status_code == 200:
+                    dep_payload = dep_resp.json()
+                    dep_items = dep_payload.get("data", dep_payload.get("value", []))
+                    deployments = sorted(
+                        {
+                            item["name"]
+                            for item in dep_items
+                            if isinstance(item, dict) and isinstance(item.get("name"), str)
+                        }
+                    )
+                    if deployments:
+                        break
+            except Exception:
+                pass
 
-        try:
-            agent_resp = await http_client.get(
-                f"{project_endpoint}/agents",
-                params={"api-version": "v1", "limit": 100},
-                headers=headers,
-                timeout=5.0,
-            )
-            if agent_resp.status_code == 200:
-                agent_payload = agent_resp.json()
-                agent_items = agent_payload.get("data", agent_payload.get("value", []))
-                agents = sorted(
-                    {
-                        item["name"]
-                        for item in agent_items
-                        if isinstance(item, dict) and isinstance(item.get("name"), str)
-                    }
+        for api_version in ("v1", "2024-05-01-preview", "2024-10-01-preview"):
+            try:
+                agent_resp = await http_client.get(
+                    f"{project_endpoint}/agents",
+                    params={"api-version": api_version, "limit": 100},
+                    headers=headers,
+                    timeout=5.0,
                 )
-        except Exception:
-            pass
+                if agent_resp.status_code == 200:
+                    agent_payload = agent_resp.json()
+                    agent_items = agent_payload.get("data", agent_payload.get("value", []))
+                    agents = sorted(
+                        {
+                            item["name"]
+                            for item in agent_items
+                            if isinstance(item, dict) and isinstance(item.get("name"), str)
+                        }
+                    )
+                    if agents:
+                        break
+            except Exception:
+                pass
 
     if deployments:
         # Filter non-conversational deployments if any (e.g. text-embedding)
