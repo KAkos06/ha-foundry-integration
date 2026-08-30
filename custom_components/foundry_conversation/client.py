@@ -40,6 +40,7 @@ from voluptuous_openapi import convert
 
 from .const import (
     AZURE_AI_SCOPE,
+    FOUNDRY_PROJECT_SCOPE,
     CONF_MAX_OUTPUT_TOKENS,
     CONF_MAX_TOOL_ITERATIONS,
     CONF_MODEL,
@@ -232,7 +233,7 @@ async def async_list_targets(
     headers: dict[str, str] = {}
     if project_endpoint is not None:
         if credential is not None:
-            for scope in (AZURE_AI_SCOPE, "https://cognitiveservices.azure.com/.default"):
+            for scope in (AZURE_AI_SCOPE, FOUNDRY_PROJECT_SCOPE):
                 try:
                     token = await credential.get_token(scope)
                     headers = {"Authorization": f"Bearer {token.token}"}
