@@ -290,8 +290,8 @@ async def async_list_targets(
             except Exception:
                 pass
 
+    targets: list[tuple[str, str]] = []
     if deployments:
-        # Filter non-conversational deployments if any (e.g. text-embedding)
         filtered_deployments = [
             dep
             for dep in deployments
@@ -299,28 +299,39 @@ async def async_list_targets(
                 dep.lower().startswith(prefix) for prefix in EXCLUDED_MODEL_PREFIXES
             )
         ]
-        targets = [
+        targets.extend(
             (TARGET_MODEL, dep) for dep in (filtered_deployments or deployments)
-        ]
+        )
     else:
+        models: list[str] = []
         try:
             models = sorted({model.id async for model in await client.models.list()})
+        except (openai.NotFoundError, openai.BadRequestError):
+            # Project endpoints (/api/projects/...) do not expose /models
+            pass
         except openai.OpenAIError as err:
-            raise _translate_openai_error(err) from err
+            if not agents:
+                raise _translate_openai_error(err) from err
 
-        filtered_models = [
-            model
-            for model in models
-            if not any(
-                model.lower().startswith(prefix) for prefix in EXCLUDED_MODEL_PREFIXES
-            )
-            and not DATE_SNAPSHOT_PATTERN.search(model)
-        ]
-        models_to_use = filtered_models if filtered_models else models
-        targets = [(TARGET_MODEL, model) for model in models_to_use]
+        if models:
+            filtered_models = [
+                model
+                for model in models
+                if not any(
+                    model.lower().startswith(prefix)
+                    for prefix in EXCLUDED_MODEL_PREFIXES
+                )
+                and not DATE_SNAPSHOT_PATTERN.search(model)
+            ]
+            models_to_use = filtered_models if filtered_models else models
+            targets.extend((TARGET_MODEL, model) for model in models_to_use)
 
     if agents:
         targets.extend((TARGET_AGENT, agent) for agent in agents)
+
+    if not targets:
+        raise FoundryDiscoveryError()
+
     return targets
 
 
