@@ -79,8 +79,16 @@ class FoundryAuthenticationError(FoundryError):
     """Authentication failed."""
 
     error_key = "invalid_auth"
-    english_message = "The Microsoft Foundry API key is invalid."
-    hungarian_message = "A Microsoft Foundry API-kulcs érvénytelen."
+    english_message = "The Microsoft Foundry credentials are invalid."
+    hungarian_message = "A Microsoft Foundry hitelesítés érvénytelen."
+
+
+class FoundryPermissionError(FoundryError):
+    """Credentials are valid but do not have enough permission."""
+
+    error_key = "insufficient_permissions"
+    english_message = "The Microsoft Foundry credentials do not have enough permissions."
+    hungarian_message = "A Microsoft Foundry hitelesítés érvényes, de nincs elég jogosultsága."
 
 
 class FoundryConnectionError(FoundryError):
@@ -351,14 +359,6 @@ async def async_list_targets(
     if agents:
         targets.extend((TARGET_AGENT, agent) for agent in agents)
 
-    if not targets:
-        # Fallback to sensible defaults so user is never blocked from proceeding
-        # to the target selection step (where custom values / agents can be picked)
-        targets = [
-            (TARGET_MODEL, model)
-            for model in ("gpt-5.4", "gpt-5.4-mini", "gpt-4o", "gpt-4o-mini")
-        ]
-
     return targets
 
 
@@ -439,8 +439,10 @@ async def async_validate_connection(
 
 def _translate_openai_error(err: openai.OpenAIError) -> FoundryError:
     """Translate an OpenAI SDK error into a stable integration error."""
-    if isinstance(err, (openai.AuthenticationError, openai.PermissionDeniedError)):
+    if isinstance(err, openai.AuthenticationError):
         return FoundryAuthenticationError()
+    if isinstance(err, openai.PermissionDeniedError):
+        return FoundryPermissionError()
     if isinstance(err, openai.APITimeoutError):
         return FoundryTimeoutError()
     if isinstance(err, openai.RateLimitError):
