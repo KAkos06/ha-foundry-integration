@@ -1,6 +1,7 @@
 """Microsoft Foundry Responses API client helpers."""
 
 import json
+import re
 from collections.abc import AsyncGenerator, Callable, Iterable
 from typing import Any, Literal, cast
 from urllib.parse import urlsplit, urlunsplit
@@ -195,49 +196,118 @@ def parse_target(target: str) -> tuple[str, str]:
     return TARGET_MODEL, target
 
 
+EXCLUDED_MODEL_PREFIXES = (
+    "text-embedding",
+    "text-search",
+    "text-similarity",
+    "dall-e",
+    "tts",
+    "whisper",
+    "babbage",
+    "davinci",
+    "curie",
+    "moderation",
+    "omni-moderation",
+    "realtime",
+)
+DATE_SNAPSHOT_PATTERN = re.compile(r"(-\d{4}-\d{2}-\d{2}$|-\d{8}$|-\d{4}$)")
+
+
 async def async_list_targets(
     client: openai.AsyncOpenAI,
     endpoint: str,
     http_client: AsyncClient,
     credential: ClientSecretCredential | None = None,
+    api_key: str | None = None,
 ) -> list[tuple[str, str]]:
     """List model and agent targets available to the connection."""
-    try:
-        models = sorted({model.id async for model in await client.models.list()})
-    except openai.OpenAIError as err:
-        raise _translate_openai_error(err) from err
-
-    targets = [(TARGET_MODEL, model) for model in models]
     project_endpoint = project_endpoint_from_openai(endpoint)
-    if credential is None or project_endpoint is None:
-        return targets
+    headers: dict[str, str] = {}
+    if project_endpoint is not None:
+        if credential is not None:
+            try:
+                token = await credential.get_token(AZURE_AI_SCOPE)
+                headers = {"Authorization": f"Bearer {token.token}"}
+            except Exception:
+                pass
+        elif api_key:
+            headers = {"api-key": api_key}
 
-    try:
-        token = await credential.get_token(AZURE_AI_SCOPE)
-        response = await http_client.get(
-            f"{project_endpoint}/agents",
-            params={"api-version": "v1", "limit": 100},
-            headers={"Authorization": f"Bearer {token.token}"},
-        )
-        response.raise_for_status()
-        payload = response.json()
-    except HTTPStatusError as err:
-        status = err.response.status_code
-        if status in (401, 403):
-            raise FoundryAuthenticationError() from err
-        raise FoundryDiscoveryError() from err
-    except Exception as err:
-        raise FoundryDiscoveryError() from err
+    deployments: list[str] = []
+    agents: list[str] = []
 
-    items = payload.get("data", payload.get("value", []))
-    agents = sorted(
-        {
-            item["name"]
-            for item in items
-            if isinstance(item, dict) and isinstance(item.get("name"), str)
-        }
-    )
-    targets.extend((TARGET_AGENT, agent) for agent in agents)
+    if project_endpoint and headers:
+        try:
+            dep_resp = await http_client.get(
+                f"{project_endpoint}/deployments",
+                params={"api-version": "v1", "limit": 100},
+                headers=headers,
+                timeout=5.0,
+            )
+            if dep_resp.status_code == 200:
+                dep_payload = dep_resp.json()
+                dep_items = dep_payload.get("data", dep_payload.get("value", []))
+                deployments = sorted(
+                    {
+                        item["name"]
+                        for item in dep_items
+                        if isinstance(item, dict) and isinstance(item.get("name"), str)
+                    }
+                )
+        except Exception:
+            pass
+
+        try:
+            agent_resp = await http_client.get(
+                f"{project_endpoint}/agents",
+                params={"api-version": "v1", "limit": 100},
+                headers=headers,
+                timeout=5.0,
+            )
+            if agent_resp.status_code == 200:
+                agent_payload = agent_resp.json()
+                agent_items = agent_payload.get("data", agent_payload.get("value", []))
+                agents = sorted(
+                    {
+                        item["name"]
+                        for item in agent_items
+                        if isinstance(item, dict) and isinstance(item.get("name"), str)
+                    }
+                )
+        except Exception:
+            pass
+
+    if deployments:
+        # Filter non-conversational deployments if any (e.g. text-embedding)
+        filtered_deployments = [
+            dep
+            for dep in deployments
+            if not any(
+                dep.lower().startswith(prefix) for prefix in EXCLUDED_MODEL_PREFIXES
+            )
+        ]
+        targets = [
+            (TARGET_MODEL, dep) for dep in (filtered_deployments or deployments)
+        ]
+    else:
+        try:
+            models = sorted({model.id async for model in await client.models.list()})
+        except openai.OpenAIError as err:
+            raise _translate_openai_error(err) from err
+
+        filtered_models = [
+            model
+            for model in models
+            if not any(
+                model.lower().startswith(prefix) for prefix in EXCLUDED_MODEL_PREFIXES
+            )
+            and not DATE_SNAPSHOT_PATTERN.search(model)
+        ]
+        models_to_use = filtered_models if filtered_models else models
+        targets = [(TARGET_MODEL, model) for model in models_to_use]
+
+    if agents:
+        targets.extend((TARGET_AGENT, agent) for agent in agents)
     return targets
 
 

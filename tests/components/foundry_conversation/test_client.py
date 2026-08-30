@@ -111,6 +111,7 @@ async def test_list_targets_combines_models_and_agents() -> None:
         get_token=AsyncMock(return_value=SimpleNamespace(token="token"))
     )
     response = SimpleNamespace(
+        status_code=200,
         raise_for_status=Mock(),
         json=Mock(return_value={"data": [{"name": "home-agent"}]}),
     )
