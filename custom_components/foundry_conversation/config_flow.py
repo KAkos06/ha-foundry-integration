@@ -412,13 +412,12 @@ class FoundryConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure_credentials(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Validate replacement credentials and update the entry."""
-        entry = self._get_reconfigure_entry()
+        """Validate replacement credentials and proceed to target selection."""
         errors: dict[str, str] = {}
         if user_input is not None:
             candidate = {**self._connection_data, **user_input}
             try:
-                await _async_list_connection_targets(self.hass, candidate)
+                targets = await _async_list_connection_targets(self.hass, candidate)
             except FoundryError as err:
                 _log_validation_error(err)
                 errors["base"] = err.error_key
@@ -426,11 +425,54 @@ class FoundryConfigFlow(ConfigFlow, domain=DOMAIN):
                 LOGGER.exception("Unexpected Microsoft Foundry reconfigure error")
                 errors["base"] = "unknown"
             else:
-                return self.async_update_reload_and_abort(entry, data=candidate)
+                self._connection_data = candidate
+                self._targets = targets
+                return await self.async_step_reconfigure_target()
         return self.async_show_form(
             step_id="reconfigure_credentials",
             data_schema=_credentials_schema(
                 self._connection_data.get(CONF_AUTH_TYPE, AUTH_API_KEY)
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reconfigure_target(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select and validate a model or agent during reconfiguration."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        current_target = entry.options.get(
+            CONF_TARGET, make_target("model", entry.options.get(CONF_MODEL, ""))
+        )
+        if user_input is not None:
+            target = user_input[CONF_TARGET].strip()
+            try:
+                target = await _async_validate_target(
+                    self.hass, self._connection_data, target
+                )
+            except FoundryError as err:
+                _log_validation_error(err)
+                errors["base"] = err.error_key
+            except Exception:
+                LOGGER.exception("Unexpected Microsoft Foundry target validation error")
+                errors["base"] = "unknown"
+            else:
+                new_options = dict(entry.options)
+                new_options.pop(CONF_MODEL, None)
+                new_options[CONF_TARGET] = target
+                if parse_target(target)[0] == TARGET_AGENT:
+                    new_options[CONF_ALLOW_CONTROL] = False
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data=self._connection_data,
+                    options=new_options,
+                )
+        return self.async_show_form(
+            step_id="reconfigure_target",
+            data_schema=_target_schema(
+                self._targets,
+                user_input.get(CONF_TARGET) if user_input else current_target,
             ),
             errors=errors,
         )
