@@ -241,7 +241,7 @@ async def async_list_targets(
     headers: dict[str, str] = {}
     if project_endpoint is not None:
         if credential is not None:
-            for scope in (AZURE_AI_SCOPE, FOUNDRY_PROJECT_SCOPE):
+            for scope in (FOUNDRY_PROJECT_SCOPE, AZURE_AI_SCOPE):
                 try:
                     token = await credential.get_token(scope)
                     headers = {"Authorization": f"Bearer {token.token}"}

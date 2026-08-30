@@ -54,11 +54,16 @@ class FoundryAsyncOpenAI(openai.AsyncOpenAI):
 def _build_foundry_token_provider(
     credential: ClientSecretCredential,
 ) -> Callable[[], Awaitable[str]]:
-    """Return a bearer-token provider that tries both supported Foundry scopes."""
+    """Return a bearer-token provider for Foundry/OpenAI v1 endpoints.
+
+    Microsoft documents ``https://ai.azure.com/.default`` for Responses API
+    calls with Microsoft Entra ID. We keep a secondary fallback only if token
+    acquisition for that audience fails entirely.
+    """
 
     async def _get_token() -> str:
         last_error: Exception | None = None
-        for scope in (AZURE_AI_SCOPE, FOUNDRY_PROJECT_SCOPE):
+        for scope in (FOUNDRY_PROJECT_SCOPE, AZURE_AI_SCOPE):
             try:
                 token = await credential.get_token(scope)
             except Exception as err:
