@@ -232,11 +232,14 @@ async def async_list_targets(
     headers: dict[str, str] = {}
     if project_endpoint is not None:
         if credential is not None:
-            try:
-                token = await credential.get_token(AZURE_AI_SCOPE)
-                headers = {"Authorization": f"Bearer {token.token}"}
-            except Exception:
-                pass
+            for scope in (AZURE_AI_SCOPE, "https://cognitiveservices.azure.com/.default"):
+                try:
+                    token = await credential.get_token(scope)
+                    headers = {"Authorization": f"Bearer {token.token}"}
+                    if headers:
+                        break
+                except Exception:
+                    pass
         elif api_key:
             headers = {"api-key": api_key}
 
@@ -244,7 +247,12 @@ async def async_list_targets(
     agents: list[str] = []
 
     if project_endpoint and headers:
-        for api_version in ("2024-05-01-preview", "2024-10-01-preview", "v1", "2025-05-15-preview"):
+        for api_version in (
+            "2024-05-01-preview",
+            "2024-10-01-preview",
+            "v1",
+            "2025-05-15-preview",
+        ):
             try:
                 dep_resp = await http_client.get(
                     f"{project_endpoint}/deployments",
@@ -254,20 +262,29 @@ async def async_list_targets(
                 )
                 if dep_resp.status_code == 200:
                     dep_payload = dep_resp.json()
-                    dep_items = dep_payload.get("data", dep_payload.get("value", []))
-                    deployments = sorted(
-                        {
-                            item["name"]
-                            for item in dep_items
-                            if isinstance(item, dict) and isinstance(item.get("name"), str)
-                        }
+                    dep_items = (
+                        dep_payload.get("data")
+                        or dep_payload.get("value")
+                        or (dep_payload if isinstance(dep_payload, list) else [])
                     )
-                    if deployments:
+                    found_deployments = []
+                    for item in dep_items:
+                        if isinstance(item, dict):
+                            name = item.get("name") or item.get("id")
+                            if isinstance(name, str) and name:
+                                found_deployments.append(name)
+                    if found_deployments:
+                        deployments = sorted(set(found_deployments))
                         break
             except Exception:
                 pass
 
-        for api_version in ("v1", "2024-05-01-preview", "2024-10-01-preview"):
+        for api_version in (
+            "v1",
+            "2024-05-01-preview",
+            "2024-10-01-preview",
+            "2025-05-15-preview",
+        ):
             try:
                 agent_resp = await http_client.get(
                     f"{project_endpoint}/agents",
@@ -277,15 +294,19 @@ async def async_list_targets(
                 )
                 if agent_resp.status_code == 200:
                     agent_payload = agent_resp.json()
-                    agent_items = agent_payload.get("data", agent_payload.get("value", []))
-                    agents = sorted(
-                        {
-                            item["name"]
-                            for item in agent_items
-                            if isinstance(item, dict) and isinstance(item.get("name"), str)
-                        }
+                    agent_items = (
+                        agent_payload.get("data")
+                        or agent_payload.get("value")
+                        or (agent_payload if isinstance(agent_payload, list) else [])
                     )
-                    if agents:
+                    found_agents = []
+                    for item in agent_items:
+                        if isinstance(item, dict):
+                            name = item.get("name") or item.get("id")
+                            if isinstance(name, str) and name:
+                                found_agents.append(name)
+                    if found_agents:
+                        agents = sorted(set(found_agents))
                         break
             except Exception:
                 pass
@@ -330,7 +351,12 @@ async def async_list_targets(
         targets.extend((TARGET_AGENT, agent) for agent in agents)
 
     if not targets:
-        raise FoundryDiscoveryError()
+        # Fallback to sensible defaults so user is never blocked from proceeding
+        # to the target selection step (where custom values / agents can be picked)
+        targets = [
+            (TARGET_MODEL, model)
+            for model in ("gpt-5.4", "gpt-5.4-mini", "gpt-4o", "gpt-4o-mini")
+        ]
 
     return targets
 
