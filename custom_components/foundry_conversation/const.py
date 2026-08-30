@@ -32,7 +32,8 @@ AUTH_API_KEY: Final = "api_key"
 AUTH_ENTRA_ID: Final = "entra_id"
 TARGET_MODEL: Final = "model"
 TARGET_AGENT: Final = "agent"
-AZURE_AI_SCOPE: Final = "https://ai.azure.com/.default"
+AZURE_AI_SCOPE: Final = "https://cognitiveservices.azure.com/.default"
+FOUNDRY_PROJECT_SCOPE: Final = "https://ai.azure.com/.default"
 
 DEFAULT_OPTIONS: Final[Mapping[str, object]] = MappingProxyType(
     {
