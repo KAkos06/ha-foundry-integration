@@ -4,38 +4,69 @@
     "step": {
       "user": {
         "title": "Kapcsolódás a Microsoft Foundryhoz",
-        "description": "Add meg az Azure OpenAI v1 alap URL-t, az API-kulcsot és a deployment nevét. Mentéskor egy kis Responses API kérés ellenőrzi a beállításokat.",
+        "description": "Add meg a Foundry projektvégpontot vagy az Azure OpenAI v1 alap URL-t, majd válassz hitelesítést.",
         "data": {
           "endpoint": "Endpoint",
-          "api_key": "API-kulcs",
-          "model": "Modell / deployment"
+          "auth_type": "Hitelesítés"
         },
         "data_description": {
-          "endpoint": "Például https://<resource>.services.ai.azure.com/openai/v1/. A /responses végződésű teljes URL is elfogadott."
+          "endpoint": "Például https://<resource>.services.ai.azure.com/api/projects/<project>. A projekt URL-t az integráció automatikusan kiegészíti /openai/v1 végződéssel."
+        }
+      },
+      "credentials": {
+        "title": "Bejelentkezés a Microsoft Foundryba",
+        "description": "API-kulccsal modellek listázhatók és használhatók. Entra ID service principallal a Foundry agentek is elérhetők.",
+        "data": {
+          "api_key": "API-kulcs",
+          "tenant_id": "Tenant ID",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
+        }
+      },
+      "target": {
+        "title": "Modell vagy agent kiválasztása",
+        "description": "Az elérhető célokat az integráció betöltötte a beállított végpontról. Kézi érték formátuma: model:<név> vagy agent:<név>.",
+        "data": {
+          "target": "Modell vagy agent"
         }
       },
       "reauth_confirm": {
         "title": "Microsoft Foundry hitelesítés frissítése",
-        "description": "Az API-kulcsot a szolgáltatás elutasította. Adj meg egy érvényes kulcsot.",
+        "description": "A szolgáltatás elutasította a beállított hitelesítést. Adj meg érvényes adatokat.",
         "data": {
-          "api_key": "API-kulcs"
+          "api_key": "API-kulcs",
+          "tenant_id": "Tenant ID",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
         }
       },
       "reconfigure": {
         "title": "Microsoft Foundry újrakonfigurálása",
-        "description": "Frissítsd az endpointot és az API-kulcsot. Mentéskor a jelenlegi deployment ellenőrzésre kerül.",
+        "description": "Frissítsd az endpointot és a hitelesítési módot.",
         "data": {
           "endpoint": "Endpoint",
-          "api_key": "API-kulcs"
+          "auth_type": "Hitelesítés"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Microsoft Foundry hitelesítés frissítése",
+        "description": "Mentéskor az integráció a célok listázásával ellenőrzi a hitelesítést.",
+        "data": {
+          "api_key": "API-kulcs",
+          "tenant_id": "Tenant ID",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
         }
       }
     },
     "error": {
       "cannot_connect": "Nem lehet kapcsolódni a Microsoft Foundry endpointhoz",
       "invalid_auth": "Érvénytelen API-kulcs",
-      "invalid_deployment": "A modell / deployment nem érhető el",
-      "invalid_endpoint": "HTTPS endpoint szükséges /openai/v1 vagy /openai/v1/responses végződéssel",
+      "invalid_deployment": "A kiválasztott modell vagy agent nem érhető el",
+      "invalid_endpoint": "Foundry projekt URL vagy /openai/v1 végződésű HTTPS endpoint szükséges",
       "invalid_response": "A Microsoft Foundry érvénytelen választ adott",
+      "discovery_failed": "A modellek és agentek listázása sikertelen",
+      "no_targets": "Ezen az endpointon nincs elérhető modell vagy agent",
       "rate_limit": "A Microsoft Foundry korlátozza a kéréseket",
       "timeout": "A Microsoft Foundry nem válaszolt időben",
       "tool_limit": "Az eszközhívási korlátot elértük",
@@ -47,6 +78,12 @@
     }
   },
   "selector": {
+    "auth_type": {
+      "options": {
+        "api_key": "API-kulcs (modellek)",
+        "entra_id": "Microsoft Entra ID (modellek és agentek)"
+      }
+    },
     "reasoning_effort": {
       "options": {
         "disabled": "Kikapcsolva",
@@ -63,9 +100,9 @@
     "step": {
       "init": {
         "title": "Microsoft Foundry beszélgetési beállítások",
-        "description": "A modellfüggő paramétereket csak akkor küldjük el, ha be vannak állítva. A Home Assistant vezérlés a beépített Assist LLM API-t és csak az expose-olt entitásokat használja.",
+        "description": "Válassz modellt vagy agentet. A Home Assistant vezérlés és a modellparaméterek csak modell célra érvényesek; a Foundry agent a saját tárolt utasításait és eszközeit használja.",
         "data": {
-          "model": "Modell / deployment",
+          "target": "Modell vagy agent",
           "prompt": "System prompt",
           "max_output_tokens": "Maximális kimeneti tokenszám",
           "max_tool_iterations": "Maximális eszközhívási körök",
@@ -86,6 +123,7 @@
       "invalid_auth": "Érvénytelen API-kulcs",
       "invalid_deployment": "A modell / deployment nem érhető el",
       "invalid_response": "A Microsoft Foundry érvénytelen választ adott",
+      "discovery_failed": "A modellek és agentek listázása sikertelen",
       "rate_limit": "A Microsoft Foundry korlátozza a kéréseket",
       "timeout": "A Microsoft Foundry nem válaszolt időben",
       "unknown": "Váratlan hiba"

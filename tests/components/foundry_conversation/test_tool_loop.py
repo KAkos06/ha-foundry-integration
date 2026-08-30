@@ -6,7 +6,6 @@ from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
-
 from homeassistant.components import conversation
 from homeassistant.helpers import llm
 
@@ -18,6 +17,7 @@ from custom_components.foundry_conversation.const import (
     CONF_MAX_TOOL_ITERATIONS,
     CONF_MODEL,
     CONF_REASONING_EFFORT,
+    CONF_TARGET,
     CONF_TEMPERATURE,
 )
 
@@ -122,6 +122,31 @@ async def test_reasoning_omits_temperature() -> None:
 
     assert "temperature" not in create.await_args_list[0].kwargs
     assert create.await_args_list[0].kwargs["reasoning"] == {"effort": "high"}
+
+
+async def test_agent_target_uses_agent_reference() -> None:
+    """Agent targets omit model parameters and pass an agent reference."""
+    client, create = _make_client()
+
+    await client.async_handle_chat_log(
+        cast(conversation.ChatLog, FakeChatLog()),
+        "conversation.microsoft_foundry",
+        {
+            CONF_TARGET: "agent:home-agent",
+            CONF_MAX_TOOL_ITERATIONS: 10,
+            CONF_REASONING_EFFORT: "high",
+            CONF_TEMPERATURE: 0.5,
+        },
+    )
+
+    request = create.await_args_list[0].kwargs
+    assert "model" not in request
+    assert "reasoning" not in request
+    assert "temperature" not in request
+    assert request["extra_body"]["agent_reference"] == {
+        "type": "agent_reference",
+        "name": "home-agent",
+    }
 
 
 async def test_tool_iteration_limit() -> None:
