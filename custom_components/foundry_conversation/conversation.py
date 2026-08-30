@@ -10,12 +10,15 @@ from homeassistant.helpers import intent, llm
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FoundryConfigEntry
-from .client import FoundryAuthenticationError, FoundryError
+from .client import FoundryAuthenticationError, FoundryError, parse_target
 from .const import (
     CONF_ALLOW_CONTROL,
+    CONF_MODEL,
+    CONF_TARGET,
     DEFAULT_NAME,
     DEFAULT_OPTIONS,
     DOMAIN,
+    TARGET_MODEL,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -44,7 +47,10 @@ class FoundryConversationEntity(
         """Initialize the conversation entity."""
         self.entry = entry
         self._attr_unique_id = entry.entry_id
-        if entry.options.get(CONF_ALLOW_CONTROL, False):
+        target_type = parse_target(
+            entry.options.get(CONF_TARGET, entry.options.get(CONF_MODEL, ""))
+        )[0]
+        if entry.options.get(CONF_ALLOW_CONTROL, False) and target_type == TARGET_MODEL:
             self._attr_supported_features = (
                 conversation.ConversationEntityFeature.CONTROL
             )
@@ -75,7 +81,14 @@ class FoundryConversationEntity(
     ) -> conversation.ConversationResult:
         """Process a conversation turn through Microsoft Foundry."""
         options: dict[str, Any] = {**DEFAULT_OPTIONS, **self.entry.options}
-        llm_api = llm.LLM_API_ASSIST if options.get(CONF_ALLOW_CONTROL, False) else None
+        target_type = parse_target(
+            options.get(CONF_TARGET, options.get(CONF_MODEL, ""))
+        )[0]
+        llm_api = (
+            llm.LLM_API_ASSIST
+            if options.get(CONF_ALLOW_CONTROL, False) and target_type == TARGET_MODEL
+            else None
+        )
         extra_prompt_parts = [
             (
                 "Reply in the language identified by this BCP-47 language tag: "

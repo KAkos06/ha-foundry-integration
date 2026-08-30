@@ -6,6 +6,12 @@ from typing import Any, Literal, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import openai
+from azure.identity.aio import ClientSecretCredential
+from homeassistant.components import conversation
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import llm
+from homeassistant.helpers.json import json_dumps
+from httpx import AsyncClient, HTTPStatusError
 from openai._streaming import AsyncStream
 from openai.types.responses import (
     EasyInputMessageParam,
@@ -31,22 +37,21 @@ from openai.types.responses import (
 from openai.types.responses.response_input_param import FunctionCallOutput
 from voluptuous_openapi import convert
 
-from homeassistant.components import conversation
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import llm
-from homeassistant.helpers.json import json_dumps
-
 from .const import (
+    AZURE_AI_SCOPE,
     CONF_MAX_OUTPUT_TOKENS,
     CONF_MAX_TOOL_ITERATIONS,
     CONF_MODEL,
     CONF_REASONING_EFFORT,
+    CONF_TARGET,
     CONF_TEMPERATURE,
     CONF_TIMEOUT,
     DEFAULT_MAX_OUTPUT_TOKENS,
     DEFAULT_MAX_TOOL_ITERATIONS,
     DEFAULT_TIMEOUT,
     REASONING_DISABLED,
+    TARGET_AGENT,
+    TARGET_MODEL,
 )
 
 
@@ -110,6 +115,16 @@ class FoundryDeploymentError(FoundryError):
     hungarian_message = "A beállított Microsoft Foundry deployment nem érhető el."
 
 
+class FoundryDiscoveryError(FoundryError):
+    """Models or agents could not be listed."""
+
+    error_key = "discovery_failed"
+    english_message = "Microsoft Foundry could not list models and agents."
+    hungarian_message = (
+        "A Microsoft Foundry nem tudta listázni a modelleket és agenteket."
+    )
+
+
 class FoundryInvalidResponseError(FoundryError):
     """The API returned an unusable response."""
 
@@ -147,27 +162,110 @@ def normalize_endpoint(endpoint: str) -> str:
     path = parsed.path.rstrip("/")
     if path.endswith("/responses"):
         path = path[: -len("/responses")].rstrip("/")
+    if "/api/projects/" in path and not path.endswith("/openai/v1"):
+        project_tail = path.split("/api/projects/", 1)[1]
+        if project_tail and "/" not in project_tail:
+            path = f"{path}/openai/v1"
     if not path.endswith("/openai/v1"):
         raise InvalidEndpointError("Endpoint path must end with /openai/v1")
 
     return urlunsplit(("https", parsed.netloc, f"{path}/", "", ""))
 
 
+def project_endpoint_from_openai(endpoint: str) -> str | None:
+    """Return the project endpoint when the base URL targets a Foundry project."""
+    parsed = urlsplit(endpoint)
+    path = parsed.path.rstrip("/")
+    if "/api/projects/" not in path or not path.endswith("/openai/v1"):
+        return None
+    path = path[: -len("/openai/v1")].rstrip("/")
+    return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+
+
+def make_target(target_type: str, name: str) -> str:
+    """Create a stable stored target identifier."""
+    return f"{target_type}:{name}"
+
+
+def parse_target(target: str) -> tuple[str, str]:
+    """Split a stored target into type and Foundry resource name."""
+    target_type, separator, name = target.partition(":")
+    if separator and target_type in (TARGET_MODEL, TARGET_AGENT) and name:
+        return target_type, name
+    return TARGET_MODEL, target
+
+
+async def async_list_targets(
+    client: openai.AsyncOpenAI,
+    endpoint: str,
+    http_client: AsyncClient,
+    credential: ClientSecretCredential | None = None,
+) -> list[tuple[str, str]]:
+    """List model and agent targets available to the connection."""
+    try:
+        models = sorted({model.id async for model in await client.models.list()})
+    except openai.OpenAIError as err:
+        raise _translate_openai_error(err) from err
+
+    targets = [(TARGET_MODEL, model) for model in models]
+    project_endpoint = project_endpoint_from_openai(endpoint)
+    if credential is None or project_endpoint is None:
+        return targets
+
+    try:
+        token = await credential.get_token(AZURE_AI_SCOPE)
+        response = await http_client.get(
+            f"{project_endpoint}/agents",
+            params={"api-version": "v1", "limit": 100},
+            headers={"Authorization": f"Bearer {token.token}"},
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except HTTPStatusError as err:
+        status = err.response.status_code
+        if status in (401, 403):
+            raise FoundryAuthenticationError() from err
+        raise FoundryDiscoveryError() from err
+    except Exception as err:
+        raise FoundryDiscoveryError() from err
+
+    items = payload.get("data", payload.get("value", []))
+    agents = sorted(
+        {
+            item["name"]
+            for item in items
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        }
+    )
+    targets.extend((TARGET_AGENT, agent) for agent in agents)
+    return targets
+
+
 async def async_validate_connection(
     client: openai.AsyncOpenAI,
-    model: str,
+    target: str,
     *,
     timeout: float = 10.0,
 ) -> None:
-    """Validate credentials, endpoint, and deployment with a minimal request."""
+    """Validate credentials, endpoint, and target with a minimal request."""
+    target_type, target_name = parse_target(target)
+    request: dict[str, Any] = {
+        "input": "Reply with OK.",
+        "max_output_tokens": 128,
+        "store": False,
+        "timeout": timeout,
+    }
+    if target_type == TARGET_AGENT:
+        request["extra_body"] = {
+            "agent_reference": {
+                "type": "agent_reference",
+                "name": target_name,
+            }
+        }
+    else:
+        request["model"] = target_name
     try:
-        response = await client.responses.create(
-            model=model,
-            input="Reply with OK.",
-            max_output_tokens=128,
-            store=False,
-            timeout=timeout,
-        )
+        response = await client.responses.create(**request)
     except openai.OpenAIError as err:
         raise _translate_openai_error(err) from err
 
@@ -384,8 +482,10 @@ class FoundryClient:
     ) -> None:
         """Stream a response and execute HA tools through the ChatLog."""
         messages = _convert_content_to_input(chat_log.content)
+        target_type, target_name = parse_target(
+            options.get(CONF_TARGET, options.get(CONF_MODEL, ""))
+        )
         model_args: dict[str, Any] = {
-            "model": options[CONF_MODEL],
             "input": messages,
             "max_output_tokens": options.get(
                 CONF_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS
@@ -394,18 +494,32 @@ class FoundryClient:
             "stream": True,
             "user": chat_log.conversation_id,
         }
+        if target_type == TARGET_AGENT:
+            model_args["extra_body"] = {
+                "agent_reference": {
+                    "type": "agent_reference",
+                    "name": target_name,
+                }
+            }
+        else:
+            model_args["model"] = target_name
         reasoning_effort = options.get(CONF_REASONING_EFFORT, REASONING_DISABLED)
-        if reasoning_effort != REASONING_DISABLED:
+        if target_type == TARGET_MODEL and reasoning_effort != REASONING_DISABLED:
             model_args["reasoning"] = {"effort": reasoning_effort}
             model_args["include"] = ["reasoning.encrypted_content"]
-        if CONF_TEMPERATURE in options and reasoning_effort in (
-            REASONING_DISABLED,
-            "none",
+        if (
+            target_type == TARGET_MODEL
+            and CONF_TEMPERATURE in options
+            and reasoning_effort
+            in (
+                REASONING_DISABLED,
+                "none",
+            )
         ):
             model_args[CONF_TEMPERATURE] = options[CONF_TEMPERATURE]
 
         tools: list[ToolParam] = []
-        if chat_log.llm_api:
+        if target_type == TARGET_MODEL and chat_log.llm_api:
             tools = [
                 cast(
                     ToolParam,

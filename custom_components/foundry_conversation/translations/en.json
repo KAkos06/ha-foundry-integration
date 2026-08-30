@@ -4,38 +4,69 @@
     "step": {
       "user": {
         "title": "Connect to Microsoft Foundry",
-        "description": "Enter an Azure OpenAI v1 base URL, API key, and deployment name. Saving performs one small Responses API request to validate the settings.",
+        "description": "Enter a Foundry project endpoint or Azure OpenAI v1 base URL, then choose authentication.",
         "data": {
           "endpoint": "Endpoint",
-          "api_key": "API key",
-          "model": "Model / deployment"
+          "auth_type": "Authentication"
         },
         "data_description": {
-          "endpoint": "For example https://<resource>.services.ai.azure.com/openai/v1/. A full URL ending in /responses is also accepted."
+          "endpoint": "For example https://<resource>.services.ai.azure.com/api/projects/<project>. Project URLs are completed with /openai/v1 automatically."
+        }
+      },
+      "credentials": {
+        "title": "Sign in to Microsoft Foundry",
+        "description": "API keys can list and use models. Entra ID service principals can also list and use Foundry agents.",
+        "data": {
+          "api_key": "API key",
+          "tenant_id": "Tenant ID",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
+        }
+      },
+      "target": {
+        "title": "Select a model or agent",
+        "description": "Available targets were loaded from the configured endpoint. Custom values must use model:<name> or agent:<name>.",
+        "data": {
+          "target": "Model or agent"
         }
       },
       "reauth_confirm": {
         "title": "Update Microsoft Foundry credentials",
-        "description": "The API key was rejected. Enter a valid key.",
+        "description": "The configured credentials were rejected. Enter valid credentials.",
         "data": {
-          "api_key": "API key"
+          "api_key": "API key",
+          "tenant_id": "Tenant ID",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
         }
       },
       "reconfigure": {
         "title": "Reconfigure Microsoft Foundry",
-        "description": "Update the endpoint and API key. Saving validates the current deployment.",
+        "description": "Update the endpoint and authentication method.",
         "data": {
           "endpoint": "Endpoint",
-          "api_key": "API key"
+          "auth_type": "Authentication"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Update Microsoft Foundry credentials",
+        "description": "Saving validates the credentials by listing available targets.",
+        "data": {
+          "api_key": "API key",
+          "tenant_id": "Tenant ID",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
         }
       }
     },
     "error": {
       "cannot_connect": "Cannot connect to the Microsoft Foundry endpoint",
       "invalid_auth": "Invalid API key",
-      "invalid_deployment": "The model / deployment is not available",
-      "invalid_endpoint": "Enter an HTTPS endpoint ending in /openai/v1 or /openai/v1/responses",
+      "invalid_deployment": "The selected model or agent is not available",
+      "invalid_endpoint": "Enter a Foundry project URL or an HTTPS endpoint ending in /openai/v1",
       "invalid_response": "Microsoft Foundry returned an invalid response",
+      "discovery_failed": "Models and agents could not be listed",
+      "no_targets": "No models or agents are available on this endpoint",
       "rate_limit": "Microsoft Foundry is rate limiting requests",
       "timeout": "Microsoft Foundry did not respond in time",
       "tool_limit": "The tool-call limit was reached",
@@ -47,6 +78,12 @@
     }
   },
   "selector": {
+    "auth_type": {
+      "options": {
+        "api_key": "API key (models)",
+        "entra_id": "Microsoft Entra ID (models and agents)"
+      }
+    },
     "reasoning_effort": {
       "options": {
         "disabled": "Disabled",
@@ -63,9 +100,9 @@
     "step": {
       "init": {
         "title": "Microsoft Foundry conversation options",
-        "description": "Model-specific parameters are only sent when configured. Home Assistant control uses the built-in Assist LLM API and only exposed entities.",
+        "description": "Select a model or agent. Home Assistant control and model parameters apply only to model targets; Foundry agents use their stored instructions and tools.",
         "data": {
-          "model": "Model / deployment",
+          "target": "Model or agent",
           "prompt": "System prompt",
           "max_output_tokens": "Maximum output tokens",
           "max_tool_iterations": "Maximum tool iterations",
@@ -86,6 +123,7 @@
       "invalid_auth": "Invalid API key",
       "invalid_deployment": "The model / deployment is not available",
       "invalid_response": "Microsoft Foundry returned an invalid response",
+      "discovery_failed": "Models and agents could not be listed",
       "rate_limit": "Microsoft Foundry is rate limiting requests",
       "timeout": "Microsoft Foundry did not respond in time",
       "unknown": "Unexpected error"

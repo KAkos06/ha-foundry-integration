@@ -4,8 +4,8 @@
   <img src="https://raw.githubusercontent.com/KAkos06/ha-foundry-integration/main/custom_components/foundry_conversation/brand/icon@2x.png" width="160" alt="Microsoft Foundry integration logo">
 </p>
 
-This custom integration registers a Microsoft Foundry / Azure OpenAI Responses
-API deployment as a native Home Assistant conversation agent. Home Assistant
+This custom integration registers a Microsoft Foundry model deployment or
+Foundry agent as a native Home Assistant conversation agent. Home Assistant
 communicates directly with Foundry; no proxy, Node-RED flow, MCP server, or
 separate backend is used.
 
@@ -17,7 +17,8 @@ that are exposed to Assist can be controlled.
 
 - Home Assistant Core 2026.8.2 or newer
 - A Microsoft Foundry or Azure OpenAI deployment supporting the Responses API
-- An API key
+- An API key for model targets, or a Microsoft Entra ID service principal for
+  model and agent targets
 
 Supported base URL examples:
 
@@ -27,7 +28,30 @@ https://<resource>.services.ai.azure.com/openai/v1/
 https://<resource>.services.ai.azure.com/api/projects/<project>/openai/v1/
 ```
 
-URLs ending in `/responses` are accepted and normalized automatically.
+Bare Foundry project endpoints and URLs ending in `/responses` are accepted and
+normalized automatically.
+
+## Models and agents
+
+After authentication, the integration loads available targets into a dropdown.
+Every option is labeled with `model` or `agent`, for example:
+
+```text
+gpt-5.4 — model
+ai-home-assistant-agent — agent
+```
+
+API-key authentication can discover and use models. Agent discovery and
+invocation require a Microsoft Entra ID service principal with access to the
+Foundry project. Configure its tenant ID, client ID, and client secret in the
+integration. The service principal needs an appropriate project role, such as
+**Foundry User**.
+
+Foundry agents use the instructions and tools stored in their Foundry agent
+definition, including web search and MCP/toolbox tools. Foundry does not accept
+the Home Assistant Assist function tools as runtime additions to a persisted
+prompt agent, so **Allow Home Assistant control** is available only for model
+targets. Selecting an agent disables that option.
 
 ## Installation
 
@@ -51,17 +75,19 @@ URLs ending in `/responses` are accepted and normalized automatically.
 2. Restart Home Assistant.
 3. Open **Settings → Devices & services → Add integration**.
 4. Select **Microsoft Foundry**.
-5. Enter the endpoint, API key, and model/deployment name. Home Assistant sends
-   one small request to validate all three values.
+5. Enter the endpoint, choose API-key or Entra ID authentication, then select a
+   model or agent from the discovered dropdown. Home Assistant sends one small
+   request to validate the selected target.
 6. Open **Settings → Voice assistants**, edit an assistant, and select
    **Microsoft Foundry** as its conversation agent.
 7. To control Home Assistant, expose the desired entities to Assist, then open
    the integration options and enable **Allow Home Assistant control**.
 
-The API key is stored in the Home Assistant config entry and is never included
-in logs. Model, prompt, timeout, token limit, tool iteration limit, temperature,
-reasoning effort, and Home Assistant control can be changed in integration
-options.
+Credentials are stored in the Home Assistant config entry and are never
+included in logs. Target, prompt, timeout, token limit, tool iteration limit,
+temperature, reasoning effort, and Home Assistant control can be changed in
+integration options. Existing model-only installations are migrated
+automatically.
 
 ## Home Assistant Conversation API
 
