@@ -316,26 +316,66 @@ async def async_validate_connection(
     target: str,
     *,
     timeout: float = 10.0,
-) -> None:
-    """Validate credentials, endpoint, and target with a minimal request."""
+) -> str:
+    """Validate credentials, endpoint, and target with a minimal request.
+
+    Returns the validated canonical target string (e.g. 'agent:name' or 'model:name').
+    """
     target_type, target_name = parse_target(target)
-    request: dict[str, Any] = {
+    if target_type == TARGET_AGENT:
+        request: dict[str, Any] = {
+            "input": "Reply with OK.",
+            "max_output_tokens": 128,
+            "store": False,
+            "timeout": timeout,
+            "extra_body": {
+                "agent_reference": {
+                    "type": "agent_reference",
+                    "name": target_name,
+                }
+            },
+        }
+        try:
+            response = await client.responses.create(**request)
+        except openai.OpenAIError as err:
+            raise _translate_openai_error(err) from err
+
+        if response.status not in (None, "completed"):
+            raise FoundryInvalidResponseError(
+                f"Validation response ended with status {response.status}"
+            )
+        return make_target(TARGET_AGENT, target_name)
+
+    request = {
         "input": "Reply with OK.",
         "max_output_tokens": 128,
         "store": False,
         "timeout": timeout,
+        "model": target_name,
     }
-    if target_type == TARGET_AGENT:
-        request["extra_body"] = {
-            "agent_reference": {
-                "type": "agent_reference",
-                "name": target_name,
-            }
-        }
-    else:
-        request["model"] = target_name
     try:
         response = await client.responses.create(**request)
+    except (openai.NotFoundError, openai.BadRequestError) as err:
+        if not target.startswith(f"{TARGET_MODEL}:"):
+            try:
+                agent_request: dict[str, Any] = {
+                    "input": "Reply with OK.",
+                    "max_output_tokens": 128,
+                    "store": False,
+                    "timeout": timeout,
+                    "extra_body": {
+                        "agent_reference": {
+                            "type": "agent_reference",
+                            "name": target_name,
+                        }
+                    },
+                }
+                agent_resp = await client.responses.create(**agent_request)
+                if agent_resp.status in (None, "completed"):
+                    return make_target(TARGET_AGENT, target_name)
+            except Exception:
+                pass
+        raise _translate_openai_error(err) from err
     except openai.OpenAIError as err:
         raise _translate_openai_error(err) from err
 
@@ -343,6 +383,7 @@ async def async_validate_connection(
         raise FoundryInvalidResponseError(
             f"Validation response ended with status {response.status}"
         )
+    return make_target(TARGET_MODEL, target_name)
 
 
 def _translate_openai_error(err: openai.OpenAIError) -> FoundryError:

@@ -88,7 +88,8 @@ async def test_validate_agent_uses_agent_reference() -> None:
     create = AsyncMock(return_value=SimpleNamespace(status="completed"))
     client = SimpleNamespace(responses=SimpleNamespace(create=create))
 
-    await async_validate_connection(cast(Any, client), "agent:home-agent")
+    result = await async_validate_connection(cast(Any, client), "agent:home-agent")
+    assert result == "agent:home-agent"
 
     request = create.await_args.kwargs
     assert "model" not in request
@@ -96,6 +97,21 @@ async def test_validate_agent_uses_agent_reference() -> None:
         "type": "agent_reference",
         "name": "home-agent",
     }
+
+
+async def test_validate_agent_fallback_from_model_not_found() -> None:
+    """Unprefixed agent name falls back to agent reference on 404."""
+    create = AsyncMock()
+    # First call with model fails with NotFound, second call with agent succeeds
+    create.side_effect = [
+        openai.NotFoundError("Model not found", response=Mock(), body=None),
+        SimpleNamespace(status="completed"),
+    ]
+    client = SimpleNamespace(responses=SimpleNamespace(create=create))
+
+    result = await async_validate_connection(cast(Any, client), "home-agent")
+    assert result == "agent:home-agent"
+    assert create.await_count == 2
 
 
 async def test_list_targets_combines_models_and_agents() -> None:
