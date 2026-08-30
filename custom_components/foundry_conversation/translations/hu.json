@@ -10,7 +10,7 @@
           "auth_type": "Hitelesítés"
         },
         "data_description": {
-          "endpoint": "Például https://<resource>.services.ai.azure.com/api/projects/<project>. A projekt URL-t az integráció automatikusan kiegészíti /openai/v1 végződéssel."
+          "endpoint": "Például https://RESOURCE.services.ai.azure.com/api/projects/PROJECT. A projekt URL-t az integráció automatikusan kiegészíti /openai/v1 végződéssel."
         }
       },
       "credentials": {
@@ -25,7 +25,7 @@
       },
       "target": {
         "title": "Modell vagy agent kiválasztása",
-        "description": "Az elérhető célokat az integráció betöltötte a beállított végpontról. Kézi érték formátuma: model:<név> vagy agent:<név>.",
+        "description": "Az elérhető célokat az integráció betöltötte a beállított végpontról. Kézi érték formátuma: model:NEV vagy agent:NEV.",
         "data": {
           "target": "Modell vagy agent"
         }
@@ -60,7 +60,7 @@
       },
       "reconfigure_target": {
         "title": "Modell vagy agent kiválasztása",
-        "description": "Az elérhető célokat az integráció betöltötte a beállított végpontról. Kézi érték formátuma: model:<név> vagy agent:<név>.",
+        "description": "Az elérhető célokat az integráció betöltötte a beállított végpontról. Kézi érték formátuma: model:NEV vagy agent:NEV.",
         "data": {
           "target": "Modell vagy agent"
         }
@@ -68,7 +68,8 @@
     },
     "error": {
       "cannot_connect": "Nem lehet kapcsolódni a Microsoft Foundry endpointhoz",
-      "invalid_auth": "Érvénytelen API-kulcs",
+      "invalid_auth": "Érvénytelen hitelesítés",
+      "insufficient_permissions": "A hitelesítés érvényes, de nincs elég jogosultság",
       "invalid_deployment": "A kiválasztott modell vagy agent nem érhető el",
       "invalid_endpoint": "Foundry projekt URL vagy /openai/v1 végződésű HTTPS endpoint szükséges",
       "invalid_response": "A Microsoft Foundry érvénytelen választ adott",
@@ -127,7 +128,8 @@
     },
     "error": {
       "cannot_connect": "Nem lehet kapcsolódni a Microsoft Foundry endpointhoz",
-      "invalid_auth": "Érvénytelen API-kulcs",
+      "invalid_auth": "Érvénytelen hitelesítés",
+      "insufficient_permissions": "A hitelesítés érvényes, de nincs elég jogosultság",
       "invalid_deployment": "A modell / deployment nem érhető el",
       "invalid_response": "A Microsoft Foundry érvénytelen választ adott",
       "discovery_failed": "A modellek és agentek listázása sikertelen",

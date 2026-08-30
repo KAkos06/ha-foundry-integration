@@ -10,7 +10,7 @@
           "auth_type": "Authentication"
         },
         "data_description": {
-          "endpoint": "For example https://<resource>.services.ai.azure.com/api/projects/<project>. Project URLs are completed with /openai/v1 automatically."
+          "endpoint": "For example https://RESOURCE.services.ai.azure.com/api/projects/PROJECT. Project URLs are completed with /openai/v1 automatically."
         }
       },
       "credentials": {
@@ -25,7 +25,7 @@
       },
       "target": {
         "title": "Select a model or agent",
-        "description": "Available targets were loaded from the configured endpoint. Custom values must use model:<name> or agent:<name>.",
+        "description": "Available targets were loaded from the configured endpoint. Custom values must use model:NAME or agent:NAME.",
         "data": {
           "target": "Model or agent"
         }
@@ -60,7 +60,7 @@
       },
       "reconfigure_target": {
         "title": "Select a model or agent",
-        "description": "Available targets were loaded from the configured endpoint. Custom values must use model:<name> or agent:<name>.",
+        "description": "Available targets were loaded from the configured endpoint. Custom values must use model:NAME or agent:NAME.",
         "data": {
           "target": "Model or agent"
         }
@@ -68,7 +68,8 @@
     },
     "error": {
       "cannot_connect": "Cannot connect to the Microsoft Foundry endpoint",
-      "invalid_auth": "Invalid API key",
+      "invalid_auth": "Invalid credentials or insufficient permissions",
+      "insufficient_permissions": "Valid credentials, but insufficient permissions",
       "invalid_deployment": "The selected model or agent is not available",
       "invalid_endpoint": "Enter a Foundry project URL or an HTTPS endpoint ending in /openai/v1",
       "invalid_response": "Microsoft Foundry returned an invalid response",
@@ -127,7 +128,8 @@
     },
     "error": {
       "cannot_connect": "Cannot connect to the Microsoft Foundry endpoint",
-      "invalid_auth": "Invalid API key",
+      "invalid_auth": "Invalid credentials or insufficient permissions",
+      "insufficient_permissions": "Valid credentials, but insufficient permissions",
       "invalid_deployment": "The model / deployment is not available",
       "invalid_response": "Microsoft Foundry returned an invalid response",
       "discovery_failed": "Models and agents could not be listed",

@@ -7,11 +7,15 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import voluptuous as vol
 from homeassistant.helpers import llm
+from httpx import AsyncClient
 
+from custom_components.foundry_conversation.auth import create_foundry_connection
 from custom_components.foundry_conversation.client import (
     FoundryAuthenticationError,
+    FoundryPermissionError,
     InvalidEndpointError,
     _format_tool,
+    _translate_openai_error,
     async_list_targets,
     async_validate_connection,
     make_target,
@@ -68,6 +72,16 @@ def test_localized_error_message() -> None:
     error = FoundryAuthenticationError()
     assert "invalid" in error.user_message("en").lower()
     assert "érvénytelen" in error.user_message("hu-HU").lower()
+
+
+def test_permission_error_translation() -> None:
+    """Permission failures map to a dedicated user-facing error."""
+    err = openai.PermissionDeniedError("Forbidden", response=Mock(), body=None)
+
+    translated = _translate_openai_error(err)
+
+    assert isinstance(translated, FoundryPermissionError)
+    assert translated.error_key == "insufficient_permissions"
 
 
 def test_target_helpers() -> None:
@@ -141,6 +155,43 @@ async def test_list_targets_combines_models_and_agents() -> None:
     )
 
     assert targets == [("model", "gpt-5.4"), ("agent", "home-agent")]
+
+
+async def test_list_targets_returns_empty_without_real_data() -> None:
+    """Discovery should not invent fallback model names."""
+
+    async def models() -> Any:
+        if False:
+            yield None
+
+    client = SimpleNamespace(
+        models=SimpleNamespace(list=AsyncMock(return_value=models()))
+    )
+    http_client = SimpleNamespace(get=AsyncMock())
+
+    targets = await async_list_targets(
+        cast(Any, client),
+        "https://example.openai.azure.com/openai/v1/",
+        cast(Any, http_client),
+    )
+
+    assert targets == []
+
+
+async def test_create_foundry_connection_uses_api_key_header() -> None:
+    """API-key auth must use the Foundry ``api-key`` header."""
+    connection = create_foundry_connection(
+        {
+            "auth_type": "api_key",
+            "api_key": "test-key",
+            "endpoint": "https://example.services.ai.azure.com/openai/v1/",
+        },
+        AsyncClient(),
+    )
+    try:
+        assert connection.openai_client.auth_headers == {"api-key": "test-key"}
+    finally:
+        await connection.async_close()
 
 
 def test_format_tool_preserves_required_parameters() -> None:

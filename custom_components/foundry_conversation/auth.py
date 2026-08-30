@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import openai
-from azure.identity.aio import ClientSecretCredential, get_bearer_token_provider
+from azure.identity.aio import ClientSecretCredential
 from homeassistant.const import CONF_API_KEY
 from httpx import AsyncClient
 
@@ -17,6 +17,7 @@ from .const import (
     CONF_CLIENT_SECRET,
     CONF_ENDPOINT,
     CONF_TENANT_ID,
+    FOUNDRY_PROJECT_SCOPE,
 )
 
 
@@ -32,6 +33,43 @@ class FoundryConnection:
         """Close resources owned by the connection."""
         if self.credential is not None:
             await self.credential.close()
+
+
+class FoundryAsyncOpenAI(openai.AsyncOpenAI):
+    """OpenAI client variant that sends Azure Foundry API keys correctly."""
+
+    def __init__(self, *args: Any, foundry_api_key: str | None = None, **kwargs: Any) -> None:
+        """Store the raw Foundry API key for header overrides."""
+        super().__init__(*args, **kwargs)
+        self._foundry_api_key = foundry_api_key
+
+    @property
+    def auth_headers(self) -> dict[str, str]:
+        """Use ``api-key`` for Foundry API-key auth instead of bearer auth."""
+        if self._foundry_api_key:
+            return {"api-key": self._foundry_api_key}
+        return super().auth_headers
+
+
+def _build_foundry_token_provider(
+    credential: ClientSecretCredential,
+) -> Callable[[], Awaitable[str]]:
+    """Return a bearer-token provider that tries both supported Foundry scopes."""
+
+    async def _get_token() -> str:
+        last_error: Exception | None = None
+        for scope in (AZURE_AI_SCOPE, FOUNDRY_PROJECT_SCOPE):
+            try:
+                token = await credential.get_token(scope)
+            except Exception as err:
+                last_error = err
+                continue
+            return token.token
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("No Microsoft Foundry token scope succeeded")
+
+    return _get_token
 
 
 def create_foundry_connection(
@@ -50,13 +88,14 @@ def create_foundry_connection(
             client_id=data[CONF_CLIENT_ID],
             client_secret=data[CONF_CLIENT_SECRET],
         )
-        api_key = get_bearer_token_provider(credential, AZURE_AI_SCOPE)
+        api_key = _build_foundry_token_provider(credential)
 
     return FoundryConnection(
-        openai_client=openai.AsyncOpenAI(
+        openai_client=FoundryAsyncOpenAI(
             api_key=api_key,
             base_url=data[CONF_ENDPOINT],
             http_client=http_client,
+            foundry_api_key=raw_api_key,
         ),
         credential=credential,
         api_key=raw_api_key,
