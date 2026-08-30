@@ -26,6 +26,7 @@ class FoundryConnection:
 
     openai_client: openai.AsyncOpenAI
     credential: ClientSecretCredential | None = None
+    api_key: str | None = None
 
     async def async_close(self) -> None:
         """Close resources owned by the connection."""
@@ -38,9 +39,11 @@ def create_foundry_connection(
 ) -> FoundryConnection:
     """Create an OpenAI-compatible client for the configured authentication."""
     credential: ClientSecretCredential | None = None
+    raw_api_key: str | None = None
     api_key: str | Callable[[], Awaitable[str]]
     if data.get(CONF_AUTH_TYPE, AUTH_API_KEY) == AUTH_API_KEY:
-        api_key = data[CONF_API_KEY]
+        raw_api_key = data[CONF_API_KEY]
+        api_key = raw_api_key
     else:
         credential = ClientSecretCredential(
             tenant_id=data[CONF_TENANT_ID],
@@ -56,4 +59,6 @@ def create_foundry_connection(
             http_client=http_client,
         ),
         credential=credential,
+        api_key=raw_api_key,
     )
+

@@ -221,6 +221,7 @@ async def _async_list_connection_targets(
             data[CONF_ENDPOINT],
             http_client,
             connection.credential,
+            api_key=connection.api_key,
         )
     finally:
         await connection.async_close()
