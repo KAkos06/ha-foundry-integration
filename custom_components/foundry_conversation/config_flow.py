@@ -229,11 +229,11 @@ async def _async_list_connection_targets(
 
 async def _async_validate_target(
     hass: HomeAssistant, data: Mapping[str, Any], target: str
-) -> None:
+) -> str:
     """Create a temporary client and validate a model or agent target."""
     connection = create_foundry_connection(data, get_async_client(hass))
     try:
-        await async_validate_connection(connection.openai_client, target)
+        return await async_validate_connection(connection.openai_client, target)
     finally:
         await connection.async_close()
 
@@ -328,7 +328,9 @@ class FoundryConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             target = user_input[CONF_TARGET].strip()
             try:
-                await _async_validate_target(self.hass, self._connection_data, target)
+                target = await _async_validate_target(
+                    self.hass, self._connection_data, target
+                )
             except FoundryError as err:
                 _log_validation_error(err)
                 errors["base"] = err.error_key
@@ -464,7 +466,7 @@ class FoundryOptionsFlow(OptionsFlow):
             )
             if target != old_target:
                 try:
-                    await _async_validate_target(
+                    target = await _async_validate_target(
                         self.hass, self.config_entry.data, target
                     )
                 except FoundryError as err:
@@ -475,6 +477,8 @@ class FoundryOptionsFlow(OptionsFlow):
                         "Unexpected Microsoft Foundry target validation error"
                     )
                     errors["base"] = "unknown"
+            else:
+                target = old_target
             if parse_target(target)[0] == TARGET_AGENT:
                 user_input[CONF_ALLOW_CONTROL] = False
             if not errors:
