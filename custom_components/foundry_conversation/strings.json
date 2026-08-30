@@ -50,12 +50,19 @@
       },
       "reconfigure_credentials": {
         "title": "Update Microsoft Foundry credentials",
-        "description": "Saving validates the credentials by listing available targets.",
+        "description": "Enter credentials to discover and select available models and agents.",
         "data": {
           "api_key": "API key",
           "tenant_id": "Tenant ID",
           "client_id": "Client ID",
           "client_secret": "Client secret"
+        }
+      },
+      "reconfigure_target": {
+        "title": "Select a model or agent",
+        "description": "Available targets were loaded from the configured endpoint. Custom values must use model:<name> or agent:<name>.",
+        "data": {
+          "target": "Model or agent"
         }
       }
     },

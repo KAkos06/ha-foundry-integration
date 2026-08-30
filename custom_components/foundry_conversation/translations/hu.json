@@ -50,12 +50,19 @@
       },
       "reconfigure_credentials": {
         "title": "Microsoft Foundry hitelesítés frissítése",
-        "description": "Mentéskor az integráció a célok listázásával ellenőrzi a hitelesítést.",
+        "description": "Add meg a hitelesítő adatokat az elérhető modellek és agentek betöltéséhez.",
         "data": {
           "api_key": "API-kulcs",
           "tenant_id": "Tenant ID",
           "client_id": "Client ID",
           "client_secret": "Client secret"
+        }
+      },
+      "reconfigure_target": {
+        "title": "Modell vagy agent kiválasztása",
+        "description": "Az elérhető célokat az integráció betöltötte a beállított végpontról. Kézi érték formátuma: model:<név> vagy agent:<név>.",
+        "data": {
+          "target": "Modell vagy agent"
         }
       }
     },
