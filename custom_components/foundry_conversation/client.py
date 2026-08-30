@@ -280,37 +280,40 @@ async def async_list_targets(
             except Exception:
                 pass
 
-        for api_version in (
-            "v1",
-            "2024-05-01-preview",
-            "2024-10-01-preview",
-            "2025-05-15-preview",
-        ):
-            try:
-                agent_resp = await http_client.get(
-                    f"{project_endpoint}/agents",
-                    params={"api-version": api_version, "limit": 100},
-                    headers=headers,
-                    timeout=5.0,
-                )
-                if agent_resp.status_code == 200:
-                    agent_payload = agent_resp.json()
-                    agent_items = (
-                        agent_payload.get("data")
-                        or agent_payload.get("value")
-                        or (agent_payload if isinstance(agent_payload, list) else [])
+        for path in ("agents", "assistants"):
+            for api_version in (
+                "v1",
+                "2024-05-01-preview",
+                "2024-10-01-preview",
+                "2025-05-15-preview",
+            ):
+                try:
+                    agent_resp = await http_client.get(
+                        f"{project_endpoint}/{path}",
+                        params={"api-version": api_version, "limit": 100},
+                        headers=headers,
+                        timeout=5.0,
                     )
-                    found_agents = []
-                    for item in agent_items:
-                        if isinstance(item, dict):
-                            name = item.get("name") or item.get("id")
-                            if isinstance(name, str) and name:
-                                found_agents.append(name)
-                    if found_agents:
-                        agents = sorted(set(found_agents))
-                        break
-            except Exception:
-                pass
+                    if agent_resp.status_code == 200:
+                        agent_payload = agent_resp.json()
+                        agent_items = (
+                            agent_payload.get("data")
+                            or agent_payload.get("value")
+                            or (agent_payload if isinstance(agent_payload, list) else [])
+                        )
+                        found_agents = []
+                        for item in agent_items:
+                            if isinstance(item, dict):
+                                name = item.get("name") or item.get("id")
+                                if isinstance(name, str) and name:
+                                    found_agents.append(name)
+                        if found_agents:
+                            agents = sorted(set(found_agents))
+                            break
+                except Exception:
+                    pass
+            if agents:
+                break
 
     targets: list[tuple[str, str]] = []
     if deployments:
@@ -328,12 +331,9 @@ async def async_list_targets(
         models: list[str] = []
         try:
             models = sorted({model.id async for model in await client.models.list()})
-        except (openai.NotFoundError, openai.BadRequestError):
-            # Project endpoints (/api/projects/...) do not expose /models
+        except Exception:
+            # Model list on project endpoints is not available or auth restricted
             pass
-        except openai.OpenAIError as err:
-            if not agents:
-                raise _translate_openai_error(err) from err
 
         if models:
             filtered_models = [
