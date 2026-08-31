@@ -48,10 +48,9 @@ integration. The service principal needs an appropriate project role, such as
 **Foundry User**.
 
 Foundry agents use the instructions and tools stored in their Foundry agent
-definition, including web search and MCP/toolbox tools. Foundry does not accept
-the Home Assistant Assist function tools as runtime additions to a persisted
-prompt agent, so **Allow Home Assistant control** is available only for model
-targets. Selecting an agent disables that option.
+definition, including web search and MCP/toolbox tools. When **Allow Home
+Assistant control** is enabled, the integration also supplies Home Assistant's
+Assist function tools to either a model or an agent target for that response.
 
 ## Installation
 

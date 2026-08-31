@@ -61,7 +61,6 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     REASONING_DISABLED,
-    TARGET_AGENT,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -461,8 +460,6 @@ class FoundryConfigFlow(ConfigFlow, domain=DOMAIN):
                 new_options = dict(entry.options)
                 new_options.pop(CONF_MODEL, None)
                 new_options[CONF_TARGET] = target
-                if parse_target(target)[0] == TARGET_AGENT:
-                    new_options[CONF_ALLOW_CONTROL] = False
                 return self.async_update_reload_and_abort(
                     entry,
                     data=self._connection_data,
@@ -521,8 +518,6 @@ class FoundryOptionsFlow(OptionsFlow):
                     errors["base"] = "unknown"
             else:
                 target = old_target
-            if parse_target(target)[0] == TARGET_AGENT:
-                user_input[CONF_ALLOW_CONTROL] = False
             if not errors:
                 new_options = dict(user_input)
                 new_options.pop(CONF_MODEL, None)

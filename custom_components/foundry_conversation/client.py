@@ -683,7 +683,7 @@ class FoundryClient:
             model_args[CONF_TEMPERATURE] = options[CONF_TEMPERATURE]
 
         tools: list[ToolParam] = []
-        if target_type == TARGET_MODEL and chat_log.llm_api:
+        if chat_log.llm_api:
             tools = [
                 cast(
                     ToolParam,
