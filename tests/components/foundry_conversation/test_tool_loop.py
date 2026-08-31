@@ -6,6 +6,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
+import voluptuous as vol
 from homeassistant.components import conversation
 from homeassistant.helpers import llm
 
@@ -147,6 +148,33 @@ async def test_agent_target_uses_agent_reference() -> None:
         "type": "agent_reference",
         "name": "home-agent",
     }
+
+
+async def test_agent_target_receives_home_assistant_tools() -> None:
+    """Agent targets receive runtime Home Assistant function tools."""
+    client, create = _make_client()
+    chat_log = FakeChatLog()
+    chat_log.llm_api = SimpleNamespace(
+        tools=[
+            SimpleNamespace(
+                name="HassTurnOn",
+                description="Turn on a Home Assistant entity",
+                parameters=vol.Schema({vol.Required("name"): str}),
+            )
+        ],
+        custom_serializer=None,
+    )
+
+    await client.async_handle_chat_log(
+        cast(conversation.ChatLog, chat_log),
+        "conversation.microsoft_foundry",
+        {
+            CONF_TARGET: "agent:home-agent",
+            CONF_MAX_TOOL_ITERATIONS: 10,
+        },
+    )
+
+    assert create.await_args_list[0].kwargs["tools"][0]["name"] == "HassTurnOn"
 
 
 async def test_tool_iteration_limit() -> None:
