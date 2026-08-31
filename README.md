@@ -50,7 +50,10 @@ integration. The service principal needs an appropriate project role, such as
 Foundry agents use the instructions and tools stored in their Foundry agent
 definition, including web search and MCP/toolbox tools. When **Allow Home
 Assistant control** is enabled, the integration also supplies Home Assistant's
-Assist function tools to either a model or an agent target for that response.
+Assist function tools for that response. Model targets receive them through the
+Responses API `tools` parameter. Agent targets receive them through an
+`additional_tools` developer input item because Foundry rejects the top-level
+`tools` parameter when an `agent_reference` is present.
 
 ## Installation
 

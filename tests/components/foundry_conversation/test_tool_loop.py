@@ -150,8 +150,8 @@ async def test_agent_target_uses_agent_reference() -> None:
     }
 
 
-async def test_agent_target_receives_home_assistant_tools() -> None:
-    """Agent targets receive runtime Home Assistant function tools."""
+async def test_agent_target_receives_home_assistant_additional_tools() -> None:
+    """Agent targets receive HA tools as an additional-tools input item."""
     client, create = _make_client()
     chat_log = FakeChatLog()
     chat_log.llm_api = SimpleNamespace(
@@ -174,7 +174,11 @@ async def test_agent_target_receives_home_assistant_tools() -> None:
         },
     )
 
-    assert create.await_args_list[0].kwargs["tools"][0]["name"] == "HassTurnOn"
+    request = create.await_args_list[0].kwargs
+    assert "tools" not in request
+    assert request["input"][0]["type"] == "additional_tools"
+    assert request["input"][0]["role"] == "developer"
+    assert request["input"][0]["tools"][0]["name"] == "HassTurnOn"
 
 
 async def test_tool_iteration_limit() -> None:
