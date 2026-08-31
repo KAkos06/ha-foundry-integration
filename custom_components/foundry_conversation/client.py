@@ -453,7 +453,10 @@ def _translate_openai_error(err: openai.OpenAIError) -> FoundryError:
         return FoundryDeploymentError()
     if isinstance(err, openai.BadRequestError):
         message = (err.message or "").lower()
-        if "deployment" in message or "model" in message:
+        if "deployment" in message or any(
+            marker in message
+            for marker in ("model not found", "invalid model", "unknown model")
+        ):
             return FoundryDeploymentError()
     return FoundryInvalidResponseError()
 
@@ -514,14 +517,19 @@ def _convert_content_to_input(
             continue
         if content.tool_calls:
             for tool_call in content.tool_calls:
-                messages.append(
-                    ResponseFunctionToolCallParam(
-                        type="function_call",
-                        name=tool_call.tool_name,
-                        arguments=json_dumps(tool_call.tool_args),
-                        call_id=tool_call.id,
-                    )
+                function_call = ResponseFunctionToolCallParam(
+                    type="function_call",
+                    name=tool_call.tool_name,
+                    arguments=json_dumps(tool_call.tool_args),
+                    call_id=tool_call.id,
                 )
+                if (
+                    isinstance(content.native, ResponseFunctionToolCall)
+                    and content.native.call_id == tool_call.id
+                    and content.native.namespace is not None
+                ):
+                    function_call["namespace"] = content.native.namespace
+                messages.append(function_call)
         if isinstance(content.native, ResponseReasoningItem):
             messages.append(
                 ResponseReasoningItemParam(
@@ -591,17 +599,18 @@ async def _transform_stream(
             if event.delta:
                 yield {"thinking_content": event.delta}
                 saw_output = True
-        elif isinstance(event, ResponseOutputItemDoneEvent) and isinstance(
-            event.item, ResponseReasoningItem
-        ):
-            yield {
-                "native": ResponseReasoningItem(
-                    type="reasoning",
-                    id=event.item.id,
-                    summary=[],
-                    encrypted_content=event.item.encrypted_content,
-                )
-            }
+        elif isinstance(event, ResponseOutputItemDoneEvent):
+            if isinstance(event.item, ResponseReasoningItem):
+                yield {
+                    "native": ResponseReasoningItem(
+                        type="reasoning",
+                        id=event.item.id,
+                        summary=[],
+                        encrypted_content=event.item.encrypted_content,
+                    )
+                }
+            elif isinstance(event.item, ResponseFunctionToolCall):
+                yield {"native": event.item}
         elif isinstance(event, ResponseCompletedEvent):
             completed = True
             if tool_calls:

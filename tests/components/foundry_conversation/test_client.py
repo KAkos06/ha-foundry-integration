@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock
 
+import openai
 import pytest
 import voluptuous as vol
 from homeassistant.helpers import llm
@@ -12,6 +13,7 @@ from httpx import AsyncClient
 from custom_components.foundry_conversation.auth import create_foundry_connection
 from custom_components.foundry_conversation.client import (
     FoundryAuthenticationError,
+    FoundryInvalidResponseError,
     FoundryPermissionError,
     InvalidEndpointError,
     _format_tool,
@@ -82,6 +84,19 @@ def test_permission_error_translation() -> None:
 
     assert isinstance(translated, FoundryPermissionError)
     assert translated.error_key == "insufficient_permissions"
+
+
+def test_function_namespace_error_is_not_a_deployment_error() -> None:
+    """Function-call messages mentioning a model remain response errors."""
+    err = openai.BadRequestError(
+        "Missing namespace. Round-trip the model's function_call item.",
+        response=Mock(),
+        body=None,
+    )
+
+    translated = _translate_openai_error(err)
+
+    assert isinstance(translated, FoundryInvalidResponseError)
 
 
 def test_target_helpers() -> None:
