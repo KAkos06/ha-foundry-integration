@@ -9,10 +9,12 @@ import pytest
 import voluptuous as vol
 from homeassistant.components import conversation
 from homeassistant.helpers import llm
+from openai.types.responses import ResponseFunctionToolCall
 
 from custom_components.foundry_conversation.client import (
     FoundryClient,
     FoundryToolLimitError,
+    _convert_content_to_input,
 )
 from custom_components.foundry_conversation.const import (
     CONF_MAX_TOOL_ITERATIONS,
@@ -179,6 +181,32 @@ async def test_agent_target_receives_home_assistant_additional_tools() -> None:
     assert request["input"][0]["type"] == "additional_tools"
     assert request["input"][0]["role"] == "developer"
     assert request["input"][0]["tools"][0]["name"] == "HassTurnOn"
+
+
+def test_function_call_namespace_is_round_tripped() -> None:
+    """A Foundry function-call namespace is retained in the next request."""
+    native = ResponseFunctionToolCall(
+        type="function_call",
+        call_id="call-1",
+        name="HassTurnOn",
+        arguments='{"name":"Lamp"}',
+        namespace="home_assistant",
+    )
+    content = conversation.AssistantContent(
+        agent_id="conversation.microsoft_foundry",
+        tool_calls=[
+            llm.ToolInput(
+                id="call-1",
+                tool_name="HassTurnOn",
+                tool_args={"name": "Lamp"},
+            )
+        ],
+        native=native,
+    )
+
+    converted = _convert_content_to_input([content])
+
+    assert converted[0]["namespace"] == "home_assistant"
 
 
 async def test_tool_iteration_limit() -> None:
