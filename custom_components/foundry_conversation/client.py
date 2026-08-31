@@ -12,7 +12,7 @@ from homeassistant.components import conversation
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import llm
 from homeassistant.helpers.json import json_dumps
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient
 from openai._streaming import AsyncStream
 from openai.types.responses import (
     EasyInputMessageParam,
@@ -692,7 +692,17 @@ class FoundryClient:
                 for tool in chat_log.llm_api.tools
             ]
         if tools:
-            model_args["tools"] = tools
+            if target_type == TARGET_AGENT:
+                messages.insert(
+                    0,
+                    {
+                        "type": "additional_tools",
+                        "role": "developer",
+                        "tools": tools,
+                    },
+                )
+            else:
+                model_args["tools"] = tools
 
         max_iterations = options.get(
             CONF_MAX_TOOL_ITERATIONS, DEFAULT_MAX_TOOL_ITERATIONS
